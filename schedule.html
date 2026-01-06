@@ -27,42 +27,41 @@
 <main>
   <section class="fade container schedule">
     <h2>Schedule Overview</h2>
-    <p class="muted">All times are local. Click an item to add it to your calendar.</p>
+    <p class="muted">All times are local. Click a date to view events, or add them to your calendar.</p>
 
-    <div class="timeline">
-      <article class="timeline-item">
-        <div class="time">09:00 — 10:30</div>
-        <div class="content">
-          <h3>Opening Ceremony & Keynote</h3>
-          <p>Welcome note, guest keynote on emerging tech trends.</p>
-          <div class="item-actions">
-            <a class="btn small" data-start="2026-03-12T09:00:00" data-end="2026-03-12T10:30:00">Add to Calendar</a>
-          </div>
+    <div class="schedule-grid">
+      <aside class="calendar-panel">
+        <div class="calendar-header">
+          <button class="cal-prev btn small" aria-label="Previous month">‹</button>
+          <div class="month-label"></div>
+          <button class="cal-next btn small" aria-label="Next month">›</button>
         </div>
-      </article>
+        <div class="weekday-row">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="days-grid"></div>
+      </aside>
 
-      <article class="timeline-item">
-        <div class="time">11:00 — 14:00</div>
-        <div class="content">
-          <h3>HackSphere Qualifiers</h3>
-          <p>Teams compete to build a working prototype in 3 hours.</p>
-          <div class="item-actions">
-            <a class="btn small" data-start="2026-03-12T11:00:00" data-end="2026-03-12T14:00:00">Add to Calendar</a>
-          </div>
+      <div class="events-panel">
+        <div class="events-header">
+          <h3 class="events-for">Events for <span class="events-date">—</span></h3>
         </div>
-      </article>
-
-      <article class="timeline-item">
-        <div class="time">15:00 — 17:00</div>
-        <div class="content">
-          <h3>DesignVerse Showcase</h3>
-          <p>Top design teams present their UI/UX concepts.</p>
-          <div class="item-actions">
-            <a class="btn small" data-start="2026-03-12T15:00:00" data-end="2026-03-12T17:00:00">Add to Calendar</a>
-          </div>
+        <div class="events-list">
+          <!-- events will be injected here -->
         </div>
-      </article>
+      </div>
     </div>
+
+    <!-- Embedded schedule data (edit or extend) -->
+    <script type="application/json" id="scheduleData">
+    [
+      {"title":"Opening Ceremony & Keynote","start":"2026-03-12T09:00:00","end":"2026-03-12T10:30:00","desc":"Welcome note and keynote on emerging tech."},
+      {"title":"HackSphere Qualifiers","start":"2026-03-12T11:00:00","end":"2026-03-12T14:00:00","desc":"Teams compete to build working prototypes."},
+      {"title":"DesignVerse Showcase","start":"2026-03-12T15:00:00","end":"2026-03-12T17:00:00","desc":"Top design teams present their concepts."},
+      {"title":"RoboRumble Finals","start":"2026-03-13T10:00:00","end":"2026-03-13T13:00:00","desc":"Final robotics showdown."},
+      {"title":"TechTalks: AI Ethics","start":"2026-03-13T14:00:00","end":"2026-03-13T15:30:00","desc":"Panel discussion on AI ethics."}
+    ]
+    </script>
   </section>
 </main>
 
