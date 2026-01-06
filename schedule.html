@@ -70,24 +70,5 @@
 </footer>
 
 <script src="script.js"></script>
-<script>
-// small helper: wire "Add to Calendar" buttons on schedule page
-document.querySelectorAll('.timeline .btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const start = btn.getAttribute('data-start');
-    const end = btn.getAttribute('data-end');
-    if (!start) return;
-    // create Google Calendar link
-    const title = encodeURIComponent(btn.closest('.content').querySelector('h3').textContent.trim());
-    const details = encodeURIComponent(btn.closest('.content').querySelector('p').textContent.trim());
-    const location = encodeURIComponent('Benedict College of Engineering and Technology');
-    const s = new Date(start);
-    const e = end ? new Date(end) : new Date(s.getTime() + 60*60*1000);
-    const fmt = d => d.toISOString().replace(/[-:]|\.\d{3}/g,'');
-    const gcal = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(s)}/${fmt(e)}&details=${details}&location=${location}&sf=true&output=xml`;
-    window.open(gcal, '_blank');
-  });
-});
-</script>
 </body>
 </html>

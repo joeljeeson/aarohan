@@ -292,3 +292,186 @@ if (learnBtn && modal) {
   modalBackdrop && modalBackdrop.addEventListener('click', closeModal);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 }
+
+  /* ---------- Schedule page rendering, flipping and per-item ICS ---------- */
+  // If there's a #scheduleData JSON blob on the page, render calendar and events
+  function renderScheduleIfPresent() {
+    const dataEl = document.getElementById('scheduleData');
+    if (!dataEl) return;
+    let events = [];
+    try { events = JSON.parse(dataEl.textContent || '[]'); } catch (e) { console.error('Invalid schedule JSON', e); return; }
+
+    // normalize dates to Date objects
+    events = events.map(ev => ({
+      title: ev.title,
+      start: new Date(ev.start),
+      end: ev.end ? new Date(ev.end) : null,
+      desc: ev.desc || ''
+    }));
+
+    // determine month/year to display (use month of first event or today)
+    const first = events[0] || { start: new Date() };
+    const viewDate = new Date(first.start.getFullYear(), first.start.getMonth(), 1);
+
+    const monthLabelEl = document.querySelector('.month-label');
+    const daysGrid = document.querySelector('.days-grid');
+    const eventsList = document.querySelector('.events-list');
+    const eventsForEl = document.querySelector('.events-for .events-date') || document.querySelector('.events-date');
+
+    if (!daysGrid || !eventsList || !monthLabelEl) return;
+
+    function renderMonth(dt) {
+      daysGrid.innerHTML = '';
+      const year = dt.getFullYear();
+      const month = dt.getMonth();
+      monthLabelEl.textContent = dt.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+
+      const firstDay = new Date(year, month, 1);
+      const startDow = firstDay.getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+
+      // previous month tail
+      const prevCount = startDow;
+      const total = prevCount + lastDate;
+      const rows = Math.ceil(total / 7) * 7;
+
+      for (let i = 0; i < rows; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day';
+        const dayIndex = i - prevCount + 1;
+        if (dayIndex < 1 || dayIndex > lastDate) {
+          cell.classList.add('inactive');
+          cell.innerHTML = `<span class="num">&nbsp;</span>`;
+        } else {
+          const dateObj = new Date(year, month, dayIndex);
+          const iso = dateObj.toISOString().slice(0,10);
+          const todaysEvents = events.filter(ev => ev.start.toISOString().slice(0,10) === iso);
+          cell.dataset.date = iso;
+          cell.innerHTML = `<span class="num">${dayIndex}</span><span class="evt-count">${todaysEvents.length ? todaysEvents.length + ' events' : ''}</span>`;
+          if (todaysEvents.length) cell.classList.add('has-events');
+          // highlight today
+          const now = new Date();
+          if (dateObj.toDateString() === now.toDateString()) cell.classList.add('today');
+          // click to show events
+          cell.addEventListener('click', () => showEventsForDate(iso));
+        }
+        daysGrid.appendChild(cell);
+      }
+    }
+
+    function fmtTime(d) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function showEventsForDate(isoDate) {
+      const dayEvents = events.filter(ev => ev.start.toISOString().slice(0,10) === isoDate);
+      eventsList.innerHTML = '';
+      eventsForEl && (eventsForEl.textContent = new Date(isoDate).toLocaleDateString());
+      if (!dayEvents.length) {
+        eventsList.innerHTML = '<p class="muted">No events for this day.</p>';
+        return;
+      }
+
+      dayEvents.forEach(ev => {
+        const cardWrap = document.createElement('div');
+        cardWrap.className = 'timeline-item';
+        // inner 3d card
+        const card3d = document.createElement('div');
+        card3d.className = 'card-3d';
+
+        const front = document.createElement('div');
+        front.className = 'front';
+        front.innerHTML = `<div class="time">${fmtTime(ev.start)}${ev.end ? ' - ' + fmtTime(ev.end) : ''}</div>
+          <div class="content"><h3>${ev.title}</h3><p>${ev.desc}</p>
+            <div class="item-actions">
+              <a class="btn small gcal-btn" href="#" data-start="${ev.start.toISOString()}" data-end="${ev.end ? ev.end.toISOString() : ''}">Add to Google Calendar</a>
+              <a class="btn small ics-btn" href="#" data-start="${ev.start.toISOString()}" data-end="${ev.end ? ev.end.toISOString() : ''}">Download .ics</a>
+            </div>
+          </div>`;
+
+        const back = document.createElement('div');
+        back.className = 'back';
+        back.innerHTML = `<strong>${ev.title}</strong><p style="margin-top:8px">${ev.desc}</p><p style="margin-top:12px; font-size:0.85rem; color:rgba(255,255,255,0.75)">Click card to flip back</p>`;
+
+        card3d.appendChild(front);
+        card3d.appendChild(back);
+        cardWrap.appendChild(card3d);
+
+        // clicking on the card (but not on buttons) toggles flip
+        cardWrap.addEventListener('click', (e) => {
+          if (e.target.closest('a') || e.target.closest('button')) return; // don't flip when clicking controls
+          cardWrap.classList.toggle('flipped');
+        });
+
+        // wire actions
+        setTimeout(() => {
+          const gcalBtn = cardWrap.querySelector('.gcal-btn');
+          const icsBtn = cardWrap.querySelector('.ics-btn');
+          if (gcalBtn) {
+            gcalBtn.addEventListener('click', (evnt) => {
+              evnt.preventDefault();
+              const s = new Date(gcalBtn.dataset.start);
+              const e = gcalBtn.dataset.end ? new Date(gcalBtn.dataset.end) : new Date(s.getTime() + 60*60*1000);
+              const fmt = d => d.toISOString().replace(/[-:]|\.\d{3}/g,'');
+              const title = encodeURIComponent(front.querySelector('h3').textContent.trim());
+              const details = encodeURIComponent(front.querySelector('p').textContent.trim());
+              const loc = encodeURIComponent('Benedict College of Engineering and Technology');
+              const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(s)}/${fmt(e)}&details=${details}&location=${loc}&sf=true&output=xml`;
+              window.open(url, '_blank');
+            });
+          }
+          if (icsBtn) {
+            icsBtn.addEventListener('click', (evnt) => {
+              evnt.preventDefault();
+              const s = new Date(icsBtn.dataset.start);
+              const e = icsBtn.dataset.end ? new Date(icsBtn.dataset.end) : new Date(s.getTime() + 60*60*1000);
+              const uid = `aarohan-${Date.now()}@local`;
+              const dtstamp = toISOStringNoMs(new Date());
+              const icsLines = [
+                'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Aarohan//EN', 'CALSCALE:GREGORIAN',
+                'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${dtstamp}`,
+                `DTSTART:${toISOStringNoMs(s)}`, `DTEND:${toISOStringNoMs(e)}`,
+                `SUMMARY:${front.querySelector('h3').textContent.trim()}`,
+                `DESCRIPTION:${front.querySelector('p').textContent.trim()}`,
+                `LOCATION:${'Benedict College of Engineering and Technology'}`,
+                'END:VEVENT', 'END:VCALENDAR'
+              ];
+              const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${front.querySelector('h3').textContent.trim().replace(/[^a-z0-9\-]/gi,'_')}.ics`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 60*1000);
+            });
+          }
+        }, 0);
+
+        eventsList.appendChild(cardWrap);
+      });
+    }
+
+    // month navigation
+    document.querySelectorAll('.cal-prev, .cal-next').forEach(btn => {
+      btn.addEventListener('click', () => {
+        viewDate.setMonth(viewDate.getMonth() + (btn.classList.contains('cal-prev') ? -1 : 1));
+        renderMonth(viewDate);
+        // clear events display
+        document.querySelector('.events-list').innerHTML = '<p class="muted">Select a date to view events.</p>';
+        const label = document.querySelector('.events-date'); if (label) label.textContent = '—';
+      });
+    });
+
+    // initial render
+    renderMonth(viewDate);
+    // auto-select today if present, otherwise first day with events
+    const todayIso = new Date().toISOString().slice(0,10);
+    const hasToday = events.some(ev => ev.start.toISOString().slice(0,10) === todayIso);
+    if (hasToday) showEventsForDate(todayIso);
+    else if (events.length) showEventsForDate(events[0].start.toISOString().slice(0,10));
+  }
+
+  // initialize schedule rendering on DOM ready
+  document.addEventListener('DOMContentLoaded', renderScheduleIfPresent);
